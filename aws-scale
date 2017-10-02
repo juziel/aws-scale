@@ -79,7 +79,6 @@ then
    RETURN="${LIST}"
 else
   select STACK in $MATCHES; do
-    #RETURN=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name ${STACK} | grep AUTOSCALINGGROUPS)
     RETURN=$(echo "${LIST}" | grep ${STACK})
     break
   done
