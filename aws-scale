@@ -76,11 +76,11 @@ test -z "$MATCHES" && { echo "No matches found"; exit 1; }
 if [ "${MATCHES}" == "${STACKNAME}" ]
 then
   STACK=${STACKNAME}
-#  RETURN=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name ${STACK} | grep AUTOSCALINGGROUPS)
    RETURN="${LIST}"
 else
   select STACK in $MATCHES; do
-    RETURN=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name ${STACK} | grep AUTOSCALINGGROUPS)
+    #RETURN=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name ${STACK} | grep AUTOSCALINGGROUPS)
+    RETURN=$(echo "${LIST}" | grep ${STACK})
     break
   done
 fi
