@@ -1,0 +1,104 @@
+#!/bin/bash
+
+# Default values
+STACKNAME=""
+MIN=""
+MAX=""
+DES=""
+REGION="us-east-1"
+PROFILE="default"
+HELP="Usage: $(basename $0) [--stack stackname(required)] [--min num_asg_minimum(required)] [--max num_asg_maximum(required)] [--des num_asg_desired(required)] [--profile aws_profile] [--region aws_region]"
+
+# Grab the values
+while (( "$#" )); do
+  case "$1" in
+    --stack)
+      STACKNAME=$2
+      shift 2
+      ;;
+    --region)
+      REGION=$2
+      shift 2
+      ;;
+    --min)
+      MIN=$2
+      shift 2
+      ;;
+    --max)
+      MAX=$2
+      shift 2
+      ;;
+    --profile)
+      PROFILE=$2
+      shift 2
+      ;;
+    --des)
+      DES=$2
+      shift 2
+      ;;
+    -h|--help)
+      echo $HELP
+      exit 0
+      ;;
+    -*|--*=) # unsupported flags
+      echo "Error: Unsupported flag $1" >&2
+      exit 1
+      ;;
+    *) # preserve positional arguments
+      PARAMS="$PARAMS \"$1\""
+      shift
+      ;;
+  esac
+done
+
+# Make sure required fields are added
+if [ -z "${STACKNAME// }" ] || [ -z "${MIN//}" ] || [ -z "${MAX//}" ] || [ -z "${DES//}" ]
+then
+  echo "Missing required values. Please run ${0} --help"
+  exit 1
+fi
+
+# List all stacks with a name match
+LIST=$(aws autoscaling describe-auto-scaling-groups \
+  --region ${REGION} \
+  --profile ${PROFILE} \
+  | grep -i ${STACKNAME} \
+  | grep AUTOSCALINGGROUPS)
+
+MATCHES=$(echo "${LIST}" \
+  | awk '{print $3}' \
+  | column -ts $'\t')
+
+# Exit if no name matches
+test -z "$MATCHES" && { echo "No matches found"; exit 1; }
+
+# If the name is a direct match use that, if not show options
+if [ "${MATCHES}" == "${STACKNAME}" ]
+then
+  STACK=${STACKNAME}
+#  RETURN=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name ${STACK} | grep AUTOSCALINGGROUPS)
+   RETURN="${LIST}"
+else
+  select STACK in $MATCHES; do
+    RETURN=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name ${STACK} | grep AUTOSCALINGGROUPS)
+    break
+  done
+fi
+
+# Grabbing the current values
+CURR_MIN=$(echo ${RETURN} | awk '{print $11}')
+CURR_MAX=$(echo ${RETURN} | awk '{print $10}')
+CURR_DES=$(echo ${RETURN} | awk '{print $6}')
+
+# Showing the changes
+echo "Modifying ${STACK}:"
+echo "Modifying minimum from ${CURR_MIN} to ${MIN}"
+echo "Modifying maximum from ${CURR_MAX} to ${MAX}"
+echo "Modifying desired from ${CURR_DES} to ${DES}"
+
+# Submitting the changes
+aws autoscaling update-auto-scaling-group \
+  --auto-scaling-group-name ${STACK} \
+  --min-size ${MIN} \
+  --max-size ${MAX} \
+  --desired-capacity ${DES}
