@@ -62,6 +62,7 @@ fi
 LIST=$(aws autoscaling describe-auto-scaling-groups \
   --region ${REGION} \
   --profile ${PROFILE} \
+  --output text \
   | grep -i ${STACKNAME} \
   | grep AUTOSCALINGGROUPS)
 
